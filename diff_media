@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# encoding: utf-8
 # in: media-old.xml media-new.xml
 # out: evenements.json
 require 'rexml/document'
@@ -8,9 +9,19 @@ old_file = File.new(ARGV[0])
 new_file = File.new(ARGV[1])
 old_doc = REXML::Document.new(old_file.read)
 new_doc = REXML::Document.new(new_file.read)
+
 json = {}
 json[:date_heure_generation] = new_doc.root.attributes['date_heure_generation']
 json[:date_heure_generation_previous] = old_doc.root.attributes['date_heure_generation']
+json[:tweets] = []
+
+# 2013
+projet_montreal = 13
+
+# 2009
+#projet_montreal = 9
+
+hashtags = "#mtl2013 #polmtl"
 
 def fmt(elem, type)
   case type
@@ -46,7 +57,8 @@ new_doc.root.each_element('/resultats/resultats_maire/sommaire/candidat | /resul
     'nb_voix_majorite' => :i
   }.inject({}) { |h, (k, v)| h[k] = fmt(tag.elements[k], v); h }
   candidat[:id] = id
-  candidat[:poste_id] = tag.elements['..'].attributes['id'].to_i
+  candidat[:poste_id] = tag.elements['..'].attributes['id']
+  candidat[:poste] = tag.elements['../nom'].text if tag.elements['../nom']
   candidat[:parti] = tag.elements['parti'].attributes['id'].to_i
   candidats_maintenant[id] = candidat
 
@@ -60,6 +72,9 @@ new_doc.root.each_element('/resultats/resultats_maire/sommaire/candidat | /resul
   elsif before == 0 && after > 0
     candidat[:evenement] = :gagnant
     json[:postes] << candidat
+    if candidat[:parti] == projet_montreal
+      json[:tweets] << "En avance: #{candidat['prenom']} #{candidat['nom']} avec @projetmontreal #{hashtags}"
+    end
   end
 end
 
@@ -73,7 +88,7 @@ def sieges_par_parti(doc, types)
       :parti => parti = tag.elements["parti"].attributes["id"].to_i,
       :nom => tag.elements["nom"].text,
       :prenom => tag.elements["prenom"].text,
-      :poste_id => poste_id = tag.elements['..'].attributes['id'].to_i,
+      :poste_id => poste_id = tag.elements['..'].attributes['id'],
       :poste => tag.elements['../nom'].text,
       :arrondissement => tag.elements["../arrondissement"].attributes["id"].to_i
     }
@@ -103,6 +118,9 @@ if majorite[0] != majorite[1]
   json[:conseil_ville][:majoritaire] = majorite[1]
   #json[:conseil_ville][:avant] = sieges_avant
   #json[:conseil_ville][:apres] = sieges_apres
+  if majorite[1] == projet_montreal
+    json[:tweets] << "@projetmontreal majoritaire au conseil de ville avec #{nb_par_parti} sièges #{hashtags}"
+  end
 end
 
 # Conseil d'arrondissement
@@ -115,9 +133,10 @@ def sieges_par_arrondissement_par_parti(doc)
       :parti => parti = tag.elements["parti"].attributes["id"].to_i,
       :nom => tag.elements["nom"].text,
       :prenom => tag.elements["prenom"].text,
-      :poste_id => poste_id = tag.elements['..'].attributes['id'].to_i,
+      :poste_id => poste_id = tag.elements['..'].attributes['id'],
       :poste => tag.elements['../nom'].text,
-      :arrondissement => arrondissement = tag.elements["../arrondissement"].attributes["id"].to_i
+      :arrondissement => arrondissement = tag.elements["../arrondissement"].attributes["id"].to_i,
+      :nom_arrondissement => arrondissement = tag.elements["../arrondissement"].text
     }
     a = sieges[arrondissement]
     a = sieges[arrondissement] = {} unless a
@@ -150,6 +169,10 @@ arr_avant.each do |arrondissement, ignored|
     json[:conseil_arrondissement][arrondissement][:majoritaire] = majorite[1]
     json[:conseil_arrondissement][arrondissement][:avant] = sieges_avant
     json[:conseil_arrondissement][arrondissement][:apres] = sieges_apres
+    if majorite[1] == projet_montreal
+      nom_arr = sieges_apres[majorite[1]].values[0][:nom_arrondissement]
+      json[:tweets] << "@projetmontreal majoritaire dans #{nom_arr} avec #{sieges_apres.count} sièges #{hashtags}"
+    end
   end
 end
 
