@@ -62,7 +62,6 @@ new_doc.root.each_element('/resultats/resultats_maire/sommaire/candidat | /resul
   end
 end
 
-
 # Conseil de ville
 def sieges_par_parti(doc, types)
   sieges = Hash.new
@@ -74,12 +73,13 @@ def sieges_par_parti(doc, types)
       :nom => tag.elements["nom"].text,
       :prenom => tag.elements["prenom"].text,
       :poste_id => poste_id = tag.elements['../@id'],
-      :poste => tag.elements['../nom'].text
+      :poste => tag.elements['../nom'].text,
+      :arrondissement => tag.elements["../arrondissement"].attributes["id"].to_i
     }
     s = sieges[parti]
     sieges[parti] = s = {} unless s
     s[poste_id] = candidat
-    #puts "#{parti}: #{poste_id} -> #{candidat}"
+  #puts "#{parti}: #{poste_id} -> #{candidat}"
   end
   sieges
 end
@@ -92,7 +92,7 @@ nb_par_parti = [sieges_avant, sieges_apres].map {|s|
 majorite = nb_par_parti.map {|sieges|
   maj = [0,0]
   sieges.each {|parti, sieges|
-    maj = [parti, sieges] if sieges > maj[1] 
+    maj = [parti, sieges] if sieges > maj[1]
   }
   maj[0]
 }
@@ -102,6 +102,54 @@ if majorite[0] != majorite[1]
   json[:conseil_ville][:majoritaire] = majorite[1]
   #json[:conseil_ville][:avant] = sieges_avant
   #json[:conseil_ville][:apres] = sieges_apres
+end
+
+# Conseil d'arrondissement
+def sieges_par_arrondissement_par_parti(doc)
+  sieges = Hash.new
+  types_expr = ['CV', 'MC', 'CA'].map{|t| "type = '#{t}'"}.join(' or ')
+  doc.root.each_element("/resultats/resultats_postes/poste[#{types_expr}]/candidat[nb_voix_majorite != '']") do |tag|
+    candidat = {
+      :id => tag.attributes["id"].to_i,
+      :parti => parti = tag.elements["parti"].attributes["id"].to_i,
+      :nom => tag.elements["nom"].text,
+      :prenom => tag.elements["prenom"].text,
+      :poste_id => poste_id = tag.elements['../@id'],
+      :poste => tag.elements['../nom'].text,
+      :arrondissement => arrondissement = tag.elements["../arrondissement"].attributes["id"].to_i
+    }
+    a = sieges[arrondissement]
+    a = sieges[arrondissement] = {} unless a
+    p = a[parti]
+    p = a[parti] = {} unless p
+    p[poste_id] = candidat 
+    #puts "#{arrondissement} => #{parti} => #{poste_id} -> #{candidat}"
+  end
+  sieges
+end
+
+json[:conseil_arrondissement] = {}
+arr_avant = sieges_par_arrondissement_par_parti(old_doc)
+arr_apres = sieges_par_arrondissement_par_parti(new_doc)
+arr_avant.each do |arrondissement, ignored|
+  sieges_avant = arr_avant[arrondissement]
+  sieges_apres = arr_apres[arrondissement]
+  nb_par_parti = [sieges_avant, sieges_apres].map do |s|
+    s.inject({}) { |h, (parti, sieges)| h[parti] = sieges.count; h }
+  end
+  majorite = nb_par_parti.map do |sieges|
+    maj = [0,0]
+    sieges.each do |parti, sieges|
+      maj = [parti, sieges] if sieges > maj[1]
+    end
+    maj[0]
+  end
+  if majorite[0] != majorite[1]
+    json[:conseil_arrondissement][arrondissement] = {}
+    json[:conseil_arrondissement][arrondissement][:majoritaire] = majorite[1]
+    json[:conseil_arrondissement][arrondissement][:avant] = sieges_avant
+    json[:conseil_arrondissement][arrondissement][:apres] = sieges_apres
+  end
 end
 
 puts JSON.pretty_generate(json)
