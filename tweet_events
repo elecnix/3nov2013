@@ -1,0 +1,3 @@
+#!/bin/bash
+events="$1"
+grep "#mtl2013" "$events" |sed -e 's/.*"\(.*\)",\?/\1/' | grep -v -e '^$' | xargs -n1 -d '\n' ./tweet

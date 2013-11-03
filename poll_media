@@ -23,7 +23,9 @@ while true
   system "cp -v #{file}.xml #{dir_out}/media.xml"
   system "cp -v #{file}.json #{dir_out}/media.json"
   system "cp -v #{file}_events.json #{dir_out}/events.json"
-  
+
+  system "./tweet_events #{dir_out}/events.json"
+
   elapsed = Time.now.to_i - start.to_i
   puts "Imported in #{elapsed} seconds."
   sleep_time = [0, 120 - elapsed].max
