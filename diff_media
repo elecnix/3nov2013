@@ -25,10 +25,9 @@ def fmt(elem, type)
   end
 end
 
-
 candidats_avant = {}
 candidats_maintenant = {}
-json[:evenements] = evenements = []
+json[:postes] = []
 #json[:mairie_avant] = mairie_avant
 #json[:mairie_maintenant] = mairie_maintenant
 
@@ -56,12 +55,53 @@ new_doc.root.each_element('/resultats/resultats_maire/sommaire/candidat | /resul
   candidat['nb_voix_obtenues'] = [candidats_avant[id]['nb_voix_obtenues'], candidat['nb_voix_obtenues']]
   if before > 0 && after == 0
     candidat[:evenement] = :perdant
-    evenements << candidat
+    json[:postes] << candidat
   elsif before == 0 && after > 0
     candidat[:evenement] = :gagnant
-    evenements << candidat
+    json[:postes] << candidat
   end
 end
 
+
+# Conseil de ville
+def sieges_par_parti(doc, types)
+  sieges = Hash.new
+  types_expr = types.map{|t| "type = '#{t}'"}.join(' or ')
+  doc.root.each_element("/resultats/resultats_postes/poste[#{types_expr}]/candidat[nb_voix_majorite != '']") do |tag|
+    candidat = {
+      :id => tag.attributes["id"].to_i,
+      :parti => parti = tag.elements["parti"].attributes["id"].to_i,
+      :nom => tag.elements["nom"].text,
+      :prenom => tag.elements["prenom"].text,
+      :poste_id => poste_id = tag.elements['../@id'],
+      :poste => tag.elements['../nom'].text
+    }
+    s = sieges[parti]
+    sieges[parti] = s = {} unless s
+    s[poste_id] = candidat
+    #puts "#{parti}: #{poste_id} -> #{candidat}"
+  end
+  sieges
+end
+
+sieges_avant = sieges_par_parti(old_doc, ['CV', 'MC'])
+sieges_apres = sieges_par_parti(new_doc, ['CV', 'MC'])
+nb_par_parti = [sieges_avant, sieges_apres].map {|s|
+  s.inject({}) { |h, (parti, sieges)| h[parti] = sieges.count; h }
+}
+majorite = nb_par_parti.map {|sieges|
+  maj = [0,0]
+  sieges.each {|parti, sieges|
+    maj = [parti, sieges] if sieges > maj[1] 
+  }
+  maj[0]
+}
+json[:conseil_ville] = {}
+json[:conseil_ville][:partis] = nb_par_parti
+if majorite[0] != majorite[1]
+  json[:conseil_ville][:majoritaire] = majorite[1]
+  #json[:conseil_ville][:avant] = sieges_avant
+  #json[:conseil_ville][:apres] = sieges_apres
+end
 
 puts JSON.pretty_generate(json)
