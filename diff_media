@@ -46,6 +46,7 @@ new_doc.root.each_element('/resultats/resultats_maire/sommaire/candidat | /resul
     'nb_voix_majorite' => :i
   }.inject({}) { |h, (k, v)| h[k] = fmt(tag.elements[k], v); h }
   candidat[:id] = id
+  candidat[:poste_id] = tag.elements['..'].attributes['id'].to_i
   candidat[:parti] = tag.elements['parti'].attributes['id'].to_i
   candidats_maintenant[id] = candidat
 
@@ -72,7 +73,7 @@ def sieges_par_parti(doc, types)
       :parti => parti = tag.elements["parti"].attributes["id"].to_i,
       :nom => tag.elements["nom"].text,
       :prenom => tag.elements["prenom"].text,
-      :poste_id => poste_id = tag.elements['../@id'],
+      :poste_id => poste_id = tag.elements['..'].attributes['id'].to_i,
       :poste => tag.elements['../nom'].text,
       :arrondissement => tag.elements["../arrondissement"].attributes["id"].to_i
     }
@@ -114,7 +115,7 @@ def sieges_par_arrondissement_par_parti(doc)
       :parti => parti = tag.elements["parti"].attributes["id"].to_i,
       :nom => tag.elements["nom"].text,
       :prenom => tag.elements["prenom"].text,
-      :poste_id => poste_id = tag.elements['../@id'],
+      :poste_id => poste_id = tag.elements['..'].attributes['id'].to_i,
       :poste => tag.elements['../nom'].text,
       :arrondissement => arrondissement = tag.elements["../arrondissement"].attributes["id"].to_i
     }
