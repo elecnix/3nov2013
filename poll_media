@@ -1,0 +1,27 @@
+require 'date'
+
+while true
+  now = DateTime.now.strftime('%Y%m%d-%H%M')
+  file = "tmp/#{now}.xml"
+
+  system "script/download #{file}"
+
+  sommaire = Sommaire.find(:first)
+  previous_generation = sommaire.date_heure_generation if sommaire
+  current_generation = `grep date_heure_generation #{file}`.chomp
+  current_generation.sub!(/.*date_heure_generation="(.*)".*/, '\1')
+
+  if previous_generation != current_generation
+    puts "#{now} #{previous_generation} != #{current_generation}"
+    system "TIME='%e' time --output=/tmp/elapsed script/rails runner script/import #{file}"
+    elapsed=`cat /tmp/elapsed`.to_i
+    puts "Imported in #{elapsed} seconds."
+  else
+    puts "#{now} No change: #{current_generation}"
+    elapsed=0
+  end
+  
+  sleep_time = [0, 120 - elapsed].max
+  puts "Sleeping for #{sleep_time} seconds."
+  sleep(sleep_time)
+end
