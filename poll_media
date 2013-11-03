@@ -1,27 +1,33 @@
-require 'date'
+#!/usr/bin/env ruby
+
+dir_in = "media"
+dir_out = "public"
+
+system "mkdir -p #{dir_in} #{dir_out}"
 
 while true
-  now = DateTime.now.strftime('%Y%m%d-%H%M')
-  file = "tmp/#{now}.xml"
+  start = Time.now
+  file = "#{dir_in}/#{start.strftime('%Y%m%d-%H%M')}"
+  json = "#{file}.json"
 
-  system "script/download #{file}"
+  system "./download #{file}.xml"
 
-  sommaire = Sommaire.find(:first)
-  previous_generation = sommaire.date_heure_generation if sommaire
-  current_generation = `grep date_heure_generation #{file}`.chomp
-  current_generation.sub!(/.*date_heure_generation="(.*)".*/, '\1')
+  puts "Converting to JSON..."
+  system "./xml_to_json #{file}.xml > #{file}.json"
 
-  if previous_generation != current_generation
-    puts "#{now} #{previous_generation} != #{current_generation}"
-    system "TIME='%e' time --output=/tmp/elapsed script/rails runner script/import #{file}"
-    elapsed=`cat /tmp/elapsed`.to_i
-    puts "Imported in #{elapsed} seconds."
-  else
-    puts "#{now} No change: #{current_generation}"
-    elapsed=0
-  end
+  puts "Extracting events..."
+  system "./diff_media #{dir_in}/previous.xml #{file}.xml > #{file}_events.json"
+
+  # Publish (not-so)-atomically
+  system "cp -v #{file}.xml #{dir_in}/previous.xml"
+  system "cp -v #{file}.xml #{dir_out}/media.xml"
+  system "cp -v #{file}.json #{dir_out}/media.json"
+  system "cp -v #{file}_events.json #{dir_out}/events.json"
   
+  elapsed = Time.now.to_i - start.to_i
+  puts "Imported in #{elapsed} seconds."
   sleep_time = [0, 120 - elapsed].max
   puts "Sleeping for #{sleep_time} seconds."
   sleep(sleep_time)
 end
+

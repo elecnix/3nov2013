@@ -1,0 +1,17 @@
+#!/bin/bash
+# Download media.xml using wget.
+# Setup:
+# echo -e "ftp_user=mtlelection\nftp_password=XXX\n" >> ~/.wgetrc ; chmod go-rwx ~/.wgetrc
+
+file="${1-media.xml}"
+url="${2-ftp://ftp-ville-election2013.tinkweb.ca/media.xml}"
+repo="${3-history}"
+
+echo "Downloading to $file: $url"
+mkdir -p "$repo" # Please 'git init . && git add media.xml' manually if you want to preserve history.
+
+wget --quiet -O "$repo/media.xml" "$url"
+
+cp -v "$repo/media.xml" "$file"
+git --git-dir="$repo/.git" --work-tree="$repo" commit -a -m "Download"
+
