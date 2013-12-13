@@ -21,7 +21,7 @@ projet_montreal = 13
 # 2009
 #projet_montreal = 9
 
-hashtags = "#mtl2013 #polmtl"
+hashtags = "#mtl2013 #polmtl #projetmtl"
 
 def fmt(elem, type)
   case type
@@ -119,7 +119,7 @@ if majorite[0] != majorite[1]
   #json[:conseil_ville][:avant] = sieges_avant
   #json[:conseil_ville][:apres] = sieges_apres
   if majorite[1] == projet_montreal
-    json[:tweets] << "@projetmontreal majoritaire au conseil de ville avec #{nb_par_parti} sièges #{hashtags}"
+    json[:tweets] << "@projetmontreal en avance au conseil de ville avec #{nb_par_parti} sièges #{hashtags}"
   end
 end
 
@@ -171,7 +171,7 @@ arr_avant.each do |arrondissement, ignored|
     json[:conseil_arrondissement][arrondissement][:apres] = sieges_apres
     if majorite[1] == projet_montreal
       nom_arr = sieges_apres[majorite[1]].values[0][:nom_arrondissement]
-      json[:tweets] << "@projetmontreal majoritaire dans #{nom_arr} avec #{sieges_apres.count} sièges #{hashtags}"
+      json[:tweets] << "@projetmontreal en avance dans #{nom_arr} avec #{sieges_apres.count} sièges #{hashtags}"
     end
   end
 end
